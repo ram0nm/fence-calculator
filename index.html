@@ -137,7 +137,6 @@
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="card">
         <h2>Fence Parameters</h2>
@@ -205,13 +204,13 @@
 
     <div class="card">
         <h2>Single Section Schematic</h2>
-        <p style="font-size: 0.9em; color: #666; margin-top: 0;">Scaled visual representation of single fence section.</p>
+        <p style="font-size: 0.9em; color: #666; margin-top: 0;">Used to visualize single fence section.</p>
         <div id="visualizer" class="visualizer-container"></div>
     </div>
 
     <div class="card full-width">
-        <h2>Ring-to-Picket Close-up Detail</h2>
-        <p style="font-size: 0.9em; color: #666; margin-top: 0;">Precision viewport illustrating ring gaps or required shaving.</p>
+        <h2>Ring Detail</h2>
+        <p style="font-size: 0.9em; color: #666; margin-top: 0;">Used to see ring spacing.</p>
         <div id="detailVisualizer" class="visualizer-container" style="height: 300px;"></div>
     </div>
 </div>
@@ -419,10 +418,8 @@
                             <rect x="${ringX}" y="0" width="${S_actual}" height="${fenceHeight}" />
                         </clipPath>`;
                         
-                // Background red highlight for interference bounds explicitly pushed to main panel view
                 svg += `<circle cx="${ringCx}" cy="${dynamicRingCy}" r="${R}" fill="rgba(220, 53, 69, 0.15)" stroke="rgba(220, 53, 69, 0.4)" stroke-width="${strokeW}" />`;
                 
-                // Final clipped profile ensuring proper T_ring integration
                 svg += `<circle cx="${ringCx}" cy="${dynamicRingCy}" r="${R}" fill="none" stroke="#0056b3" stroke-width="${strokeW}" clip-path="url(#${clipId})" />`;
                 svg += `<line x1="${ringCx - xOffset}" y1="${dynamicRingCy - yOffset}" x2="${ringCx - xOffset}" y2="${dynamicRingCy + yOffset}" stroke="#0056b3" stroke-width="${strokeW}" />`;
                 svg += `<line x1="${ringCx + xOffset}" y1="${dynamicRingCy - yOffset}" x2="${ringCx + xOffset}" y2="${dynamicRingCy + yOffset}" stroke="#0056b3" stroke-width="${strokeW}" />`;
@@ -450,8 +447,8 @@
     }
 
     function drawDetailSchematic(delta, S_actual, D_ring, W_picket, T_ring) {
-        // Create a responsive padded viewport surrounding exactly one gap space
-        const pad = 1.0;
+        // Create a responsive padded viewport. Padding increased heavily on the sides to harbor horizontal leader dimensions.
+        const pad = 4.5;
         const vbWidth = S_actual + (2 * W_picket) + (2 * pad);
         const vbHeight = D_ring + 4;
         const startX = -W_picket - pad;
@@ -494,10 +491,16 @@
             svg += `<line x1="${ringCx - xOffset}" y1="${ringCy - yOffset}" x2="${ringCx - xOffset}" y2="${ringCy + yOffset}" stroke="#dc3545" stroke-width="0.05" />`;
             svg += `<line x1="${ringCx + xOffset}" y1="${ringCy - yOffset}" x2="${ringCx + xOffset}" y2="${ringCy + yOffset}" stroke="#dc3545" stroke-width="0.05" />`;
 
-            // Text for shave
+            // Text for shave pulled horizontally to the outboard sides with leader lines
             let shaveVal = (Math.abs(delta)/2).toFixed(3);
-            svg += `<text x="${-W_picket/2}" y="${ringCy}" fill="#fff" font-size="0.4" text-anchor="middle" transform="rotate(-90, ${-W_picket/2}, ${ringCy})">Shave: ${shaveVal}"</text>`;
-            svg += `<text x="${S_actual + W_picket/2}" y="${ringCy}" fill="#fff" font-size="0.4" text-anchor="middle" transform="rotate(-90, ${S_actual + W_picket/2}, ${ringCy})">Shave: ${shaveVal}"</text>`;
+            
+            // Left Shave
+            svg += `<text x="${-W_picket - 0.5}" y="${ringCy + 0.15}" fill="#dc3545" font-size="0.5" font-weight="bold" text-anchor="end">Shave: ${shaveVal}"</text>`;
+            svg += `<line x1="${-W_picket - 0.4}" y1="${ringCy}" x2="${-W_picket}" y2="${ringCy}" stroke="#dc3545" stroke-width="0.05" stroke-dasharray="0.1,0.1" />`;
+            
+            // Right Shave
+            svg += `<text x="${S_actual + W_picket + 0.5}" y="${ringCy + 0.15}" fill="#dc3545" font-size="0.5" font-weight="bold" text-anchor="start">Shave: ${shaveVal}"</text>`;
+            svg += `<line x1="${S_actual + W_picket + 0.4}" y1="${ringCy}" x2="${S_actual + W_picket}" y2="${ringCy}" stroke="#dc3545" stroke-width="0.05" stroke-dasharray="0.1,0.1" />`;
 
         } else {
             // Unobstructed ring
@@ -509,24 +512,25 @@
                 
                 // Left Gap
                 svg += `<line x1="0" y1="${ringCy}" x2="${gap}" y2="${ringCy}" stroke="#28a745" stroke-width="0.05" marker-start="url(#arrowGreen)" marker-end="url(#arrowGreen)" />`;
-                svg += `<text x="${gap/2}" y="${ringCy - 0.2}" fill="#28a745" font-size="0.4" text-anchor="middle">Gap: ${gap.toFixed(3)}"</text>`;
+                svg += `<text x="${-W_picket - 0.5}" y="${ringCy + 0.15}" fill="#28a745" font-size="0.5" font-weight="bold" text-anchor="end">Gap: ${gap.toFixed(3)}"</text>`;
+                svg += `<line x1="${-W_picket - 0.4}" y1="${ringCy}" x2="0" y2="${ringCy}" stroke="#28a745" stroke-width="0.05" stroke-dasharray="0.1,0.1" />`;
                 
                 // Right Gap
                 svg += `<line x1="${S_actual - gap}" y1="${ringCy}" x2="${S_actual}" y2="${ringCy}" stroke="#28a745" stroke-width="0.05" marker-start="url(#arrowGreen)" marker-end="url(#arrowGreen)" />`;
-                svg += `<text x="${S_actual - gap/2}" y="${ringCy - 0.2}" fill="#28a745" font-size="0.4" text-anchor="middle">Gap: ${gap.toFixed(3)}"</text>`;
+                svg += `<text x="${S_actual + W_picket + 0.5}" y="${ringCy + 0.15}" fill="#28a745" font-size="0.5" font-weight="bold" text-anchor="start">Gap: ${gap.toFixed(3)}"</text>`;
+                svg += `<line x1="${S_actual + W_picket + 0.4}" y1="${ringCy}" x2="${S_actual}" y2="${ringCy}" stroke="#28a745" stroke-width="0.05" stroke-dasharray="0.1,0.1" />`;
             }
         }
 
         // Total Spacing Dimension (Bottom)
-        let dimY = D_ring + 1;
+        let dimY = D_ring + 1.5;
         svg += `<line x1="0" y1="${dimY}" x2="${S_actual}" y2="${dimY}" stroke="#333" stroke-width="0.05" />`;
         svg += `<line x1="0" y1="${dimY-0.2}" x2="0" y2="${dimY+0.2}" stroke="#333" stroke-width="0.05" />`;
         svg += `<line x1="${S_actual}" y1="${dimY-0.2}" x2="${S_actual}" y2="${dimY+0.2}" stroke="#333" stroke-width="0.05" />`;
-        svg += `<text x="${S_actual/2}" y="${dimY - 0.2}" fill="#333" font-size="0.4" text-anchor="middle">Picket-to-Picket Opening: ${S_actual.toFixed(3)}"</text>`;
+        svg += `<text x="${-W_picket - 0.2}" y="${dimY + 0.15}" fill="#333" font-size="0.45" font-weight="bold" text-anchor="end">Picket Gap: ${S_actual.toFixed(3)}"</text>`;
 
-        // Target Ring OD Dimension (Top)
-        let ringTopY = ringCy - (D_ring/2);
-        svg += `<text x="${S_actual/2}" y="${ringTopY - 0.2}" fill="#0056b3" font-size="0.4" text-anchor="middle">Target Ring OD: ${D_ring.toFixed(3)}"</text>`;
+        // Target Ring OD Dimension (Top Left)
+        svg += `<text x="${startX - 1}" y="${startY + 0.6}" fill="#0056b3" font-size="0.45" font-weight="bold" text-anchor="start">Target Ring OD: ${D_ring.toFixed(3)}"</text>`;
 
         svg += `</svg>`;
         document.getElementById('detailVisualizer').innerHTML = svg;
