@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -127,11 +126,11 @@
     <div class="card">
         <h2>Fence Parameters</h2>
         <div class="input-group">
-            <label for="runLength">Overall Run Length (inches)</label>
+            <label for="runLength">Overall Run Length (Center-to-Center) (inches)</label>
             <input type="number" id="runLength" value="300" step="0.1" min=0>
         </div>
         <div class="input-group">
-            <label for="maxSection">Max Section Length (inches)</label>
+            <label for="maxSection">Max Section Length (On-Center) (inches)</label>
             <input type="number" id="maxSection" value="96" step="0.1">
         </div>
         <div class="input-group">
@@ -161,7 +160,7 @@
         <div class="results-grid">
             <div class="result-item">Total Sections <span id="outSections">0</span></div>
             <div class="result-item">Total Posts <span id="outPosts">0</span></div>
-            <div class="result-item full-width">Exact Section Length On Center <span id="outSectionLength">0"</span></div>
+            <div class="result-item full-width">Exact Section Length On-Center <span id="outSectionLength">0"</span></div>
             <div class="result-item">Pickets per Section <span id="outPickets">0</span></div>
             <div class="result-item">Actual Picket Gap <span id="outSpacing">0"</span></div>
             <div class="result-item full-width">
@@ -238,8 +237,8 @@
 
     function calculate() {
         // 1. Gather Inputs
-        const L = parseFloat(document.getElementById('runLength').value) || 0;
-        const S_max = parseFloat(document.getElementById('maxSection').value) || 96;
+        const L_cc = parseFloat(document.getElementById('runLength').value) || 0;
+        const S_max_oc = parseFloat(document.getElementById('maxSection').value) || 96;
         const W_post = parseFloat(document.getElementById('postWidth').value) || 1.5;
         const W_picket = parseFloat(document.getElementById('picketWidth').value) || 0.5;
         const D_ring = parseFloat(document.getElementById('ringDiameter').value) || 3.75;
@@ -247,13 +246,19 @@
         const T_airGap = parseFloat(document.getElementById('tolAirGap').value) || 0;
 
         // 2. Macro Logic (Sections & Posts)
-        const N = Math.ceil((L - W_post) / (S_max + W_post));
+        // Calculate Sections based strictly on Center-to-Center Total Length and Max Section
+        const N = Math.ceil(L_cc / S_max_oc);
         const numPosts = N > 0 ? N + 1 : 0;
-        const S_L = N > 0 ? (L - (numPosts * W_post)) / N : 0;
+        
+        // Calculate Exact On-Center spacing
+        const S_OC = N > 0 ? L_cc / N : 0;
+        
+        // Clear span (inside post to inside post) used for picket/ring math
+        const S_clear = Math.max(0, S_OC - W_post);
 
         // 3. Micro Logic (Pickets & Rings)
-        const P = Math.max(0, Math.round((S_L - D_ring) / (D_ring + W_picket)));
-        const S_actual = P >= 0 ? (S_L - (P * W_picket)) / (P + 1) : 0;
+        const P = Math.max(0, Math.round((S_clear - D_ring) / (D_ring + W_picket)));
+        const S_actual = P >= 0 ? (S_clear - (P * W_picket)) / (P + 1) : 0;
 
         // 4. Ring Fitment & Split Tolerance Logic
         const delta = S_actual - D_ring;
@@ -290,41 +295,47 @@
 
         for (let n = startN; n <= endN; n++) {
             for (let p = 1; p < 100; p++) {
-                let s_ideal = (p * W_picket) + ((p + 1) * D_ring);
-                if (s_ideal <= S_max) {
-                    let l_ideal = (n * s_ideal) + ((n + 1) * W_post);
-                    candidates.push({ L: l_ideal, N: n, P: p, S: s_ideal });
+                // Perfect clear span for these pickets and rings
+                let s_ideal_clear = (p * W_picket) + ((p + 1) * D_ring);
+                
+                // Convert back to On-Center dimension
+                let s_ideal_oc = s_ideal_clear + W_post;
+                
+                if (s_ideal_oc <= S_max_oc) {
+                    // Overall center-to-center run length = (Sections * OC Spacing)
+                    let l_ideal = n * s_ideal_oc;
+                    candidates.push({ L: l_ideal, N: n, P: p, S_OC: s_ideal_oc });
                 } else {
-                    break;
+                    break; // Exceeded max section limit
                 }
             }
         }
 
         candidates.sort((a, b) => a.L - b.L);
-        let shorter = candidates.slice().reverse().find(c => c.L < L - 0.001);
-        let longer = candidates.find(c => c.L > L + 0.001);
+        let shorter = candidates.slice().reverse().find(c => c.L < L_cc - 0.001);
+        let longer = candidates.find(c => c.L > L_cc + 0.001);
 
         let suggestionsHTML = "";
         if (Math.abs(delta) <= 0.001) {
             suggestionsHTML = `<em>Current length is already mathematically perfect.</em>`;
         } else {
             if (shorter) {
-                let diffShort = L - shorter.L;
+                let diffShort = L_cc - shorter.L;
                 suggestionsHTML += `
                     <div class="suggestion-item">
                         <div>
-                            <strong>Shrink to ${shorter.L.toFixed(2)}"</strong> (-${diffShort.toFixed(2)}")<br>
-                            <span style="font-size: 0.9em; color: #555;">${shorter.N} sections @ ${shorter.S.toFixed(2)}" | ${shorter.P} pickets per section</span>
+                            <strong>Shrink to ${shorter.L.toFixed(2)}" Center-to-Center</strong> (-${diffShort.toFixed(2)}")<br>
+                            <span style="font-size: 0.9em; color: #555;">${shorter.N} sections @ ${shorter.S_OC.toFixed(2)}" OC | ${shorter.P} pickets per section</span>
                         </div>
                     </div>`;
             }
             if (longer) {
-                let diffLong = longer.L - L;
+                let diffLong = longer.L - L_cc;
                 suggestionsHTML += `
                     <div class="suggestion-item">
                         <div>
-                            <strong>Stretch to ${longer.L.toFixed(2)}"</strong> (+${diffLong.toFixed(2)}")<br>
-                            <span style="font-size: 0.9em; color: #555;">${longer.N} sections @ ${longer.S.toFixed(2)}" | ${longer.P} pickets per secction</span>
+                            <strong>Stretch to ${longer.L.toFixed(2)}" Center-to-Center</strong> (+${diffLong.toFixed(2)}")<br>
+                            <span style="font-size: 0.9em; color: #555;">${longer.N} sections @ ${longer.S_OC.toFixed(2)}" OC | ${longer.P} pickets per section</span>
                         </div>
                     </div>`;
             }
@@ -335,7 +346,7 @@
         let runningHTML = "";
         if (numPosts > 0) {
             // Post 1 center is strictly the origin (0)
-            const onCenterSpacing = S_L + W_post;
+            const onCenterSpacing = S_OC;
             for (let i = 1; i <= numPosts; i++) {
                 // By doing (i - 1), the first post (i=1) mathematically equals exactly 0.
                 let postCenter = (i - 1) * onCenterSpacing;
@@ -353,16 +364,16 @@
         // 7. Update DOM Results
         document.getElementById('outSections').innerText = N;
         document.getElementById('outPosts').innerText = numPosts;
-        document.getElementById('outSectionLength').innerText = ((S_L+W_post).toFixed(3)) + '"';
+        document.getElementById('outSectionLength').innerText = S_OC.toFixed(3) + '"';
         document.getElementById('outPickets').innerText = P;
         document.getElementById('outSpacing').innerText = S_actual.toFixed(3) + '"';
 
-        // 8. Draw SVG Schematic
-        if(S_L > 0) drawSchematic(S_L, W_post, W_picket, P, S_actual, D_ring);
+        // 8. Draw SVG Schematic (Pass S_clear so the visualizer draws the gap properly)
+        if(S_clear > 0) drawSchematic(S_clear, W_post, W_picket, P, S_actual, D_ring);
     }
 
-    function drawSchematic(S_L, W_post, W_picket, P, S_actual, D_ring) {
-        const totalVisualWidth = S_L + (W_post * 2);
+    function drawSchematic(S_clear, W_post, W_picket, P, S_actual, D_ring) {
+        const totalVisualWidth = S_clear + (W_post * 2);
         const fenceHeight = 50; 
         
         let svg = `<svg viewBox="0 0 ${totalVisualWidth} ${fenceHeight}" style="width:100%; height:100%;">`;
@@ -371,9 +382,9 @@
         svg += `<rect x="0" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
         
         // Rails
-        svg += `<rect x="${W_post}" y="11" width="${S_L}" height="2" fill="#555" />`;
-        svg += `<rect x="${W_post}" y="5" width="${S_L}" height="2" fill="#555" />`;
-        svg += `<rect x="${W_post}" y="45" width="${S_L}" height="2" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="11" width="${S_clear}" height="2" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="5" width="${S_clear}" height="2" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="45" width="${S_clear}" height="2" fill="#555" />`;
 
         // Pickets & Rings
         let currentX = W_post;
