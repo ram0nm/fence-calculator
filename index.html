@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parametric Fence Calculator</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --accent: #0056b3;
+            --border: #dddddd;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: var(--accent);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .result-item {
+            background: var(--bg-color);
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .result-item span {
+            display: block;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--accent);
+            margin-top: 5px;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        #visualizer {
+            width: 100%;
+            height: 200px;
+            background-color: #e9ecef;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>Fence Parameters</h2>
+        <div class="input-group">
+            <label for="runLength">Overall Run Length (inches)</label>
+            <input type="number" id="runLength" value="200" step="0.1">
+        </div>
+        <div class="input-group">
+            <label for="maxSection">Max Section Length (inches)</label>
+            <input type="number" id="maxSection" value="96" step="0.1">
+        </div>
+        <div class="input-group">
+            <label for="postWidth">Post Width (inches)</label>
+            <input type="number" id="postWidth" value="1.5" step="0.1">
+        </div>
+        <div class="input-group">
+            <label for="picketWidth">Picket Width (inches)</label>
+            <input type="number" id="picketWidth" value="0.5" step="0.1">
+        </div>
+        <div class="input-group">
+            <label for="ringDiameter">Target Ring Diameter (inches)</label>
+            <input type="number" id="ringDiameter" value="3.75" step="0.1">
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Calculated Results</h2>
+        <div class="results-grid">
+            <div class="result-item">Total Sections <span id="outSections">0</span></div>
+            <div class="result-item">Total Posts <span id="outPosts">0</span></div>
+            <div class="result-item full-width">Exact Section Length <span id="outSectionLength">0"</span></div>
+            <div class="result-item">Pickets per Section <span id="outPickets">0</span></div>
+            <div class="result-item">Actual Spacing <span id="outSpacing">0"</span></div>
+            <div class="result-item full-width">Ring Fitment Status <span id="outFitment">-</span></div>
+        </div>
+    </div>
+
+    <div class="card full-width">
+        <h2>Single Section Schematic</h2>
+        <p style="font-size: 0.9em; color: #666;">Visual representation of exactly one calculated section (scaled to fit).</p>
+        <div id="visualizer"></div>
+    </div>
+</div>
+
+<script>
+    function calculate() {
+        // 1. Gather Inputs
+        const L = parseFloat(document.getElementById('runLength').value) || 0;
+        const S_max = parseFloat(document.getElementById('maxSection').value) || 96;
+        const W_post = parseFloat(document.getElementById('postWidth').value) || 1.5;
+        const W_picket = parseFloat(document.getElementById('picketWidth').value) || 0.5;
+        const D_ring = parseFloat(document.getElementById('ringDiameter').value) || 3.75;
+
+        // 2. Macro Logic (Sections & Posts)
+        const N = Math.ceil((L - W_post) / (S_max + W_post));
+        const numPosts = N + 1;
+        const S_L = (L - (numPosts * W_post)) / N;
+
+        // 3. Micro Logic (Pickets & Rings)
+        const P = Math.round((S_L - D_ring) / (D_ring + W_picket));
+        const S_actual = (S_L - (P * W_picket)) / (P + 1);
+
+        // 4. Ring Fitment
+        let fitment = "";
+        let diff = Math.abs(S_actual - D_ring);
+        
+        if (diff < 0.01) {
+            fitment = "Flush Fit (Perfect)";
+        } else if (S_actual < D_ring) {
+            fitment = `Shave rings by ${diff.toFixed(3)}"`;
+        } else {
+            fitment = `Leaves a gap of ${diff.toFixed(3)}"`;
+        }
+
+        // 5. Update DOM
+        document.getElementById('outSections').innerText = N;
+        document.getElementById('outPosts').innerText = numPosts;
+        document.getElementById('outSectionLength').innerText = S_L.toFixed(3) + '"';
+        document.getElementById('outPickets').innerText = P;
+        document.getElementById('outSpacing').innerText = S_actual.toFixed(3) + '"';
+        document.getElementById('outFitment').innerText = fitment;
+
+        // 6. Draw SVG Schematic
+        drawSchematic(S_L, W_post, W_picket, P, S_actual, D_ring);
+    }
+
+    function drawSchematic(S_L, W_post, W_picket, P, S_actual, D_ring) {
+        const totalVisualWidth = S_L + (W_post * 2);
+        const fenceHeight = 50; 
+        
+        let svg = `<svg viewBox="0 0 ${totalVisualWidth} ${fenceHeight}" style="width:100%; height:100%;">`;
+        
+        // Draw Left Post
+        svg += `<rect x="0" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
+        
+        // Top and Bottom Rails
+        svg += `<rect x="${W_post}" y="10" width="${S_L}" height="2" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="38" width="${S_L}" height="2" fill="#555" />`;
+
+        // Draw Pickets & Rings
+        let currentX = W_post;
+        for (let i = 0; i <= P; i++) {
+            // Draw Ring in the space (if it fits visually)
+            let ringRadius = (S_actual > D_ring ? D_ring : S_actual) / 2;
+            let ringCx = currentX + (S_actual / 2);
+            let ringCy = 25; // center vertical
+            svg += `<circle cx="${ringCx}" cy="${ringCy}" r="${ringRadius}" fill="none" stroke="#0056b3" stroke-width="1" />`;
+            
+            currentX += S_actual;
+
+            // Draw Picket
+            if (i < P) {
+                svg += `<rect x="${currentX}" y="5" width="${W_picket}" height="40" fill="#666" />`;
+                currentX += W_picket;
+            }
+        }
+
+        // Draw Right Post
+        svg += `<rect x="${totalVisualWidth - W_post}" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
+        svg += `</svg>`;
+
+        document.getElementById('visualizer').innerHTML = svg;
+    }
+
+    // Attach event listeners to update automatically
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.addEventListener('input', calculate);
+    });
+
+    // Run once on load
+    calculate();
+</script>
+</body>
+</html>  
