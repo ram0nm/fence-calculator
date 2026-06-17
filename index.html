@@ -141,7 +141,7 @@
         </div>
         <div class="input-group">
             <label for="gapTolerance">Gap Tolerance (inches) +/-</label>
-            <input type="number" id="gapTolerance" value="0.0625" step="0.01">
+            <input type="number" id="gapTolerance" value="0.125" step="0.01">
         </div>
     </div>
 
@@ -150,9 +150,9 @@
         <div class="results-grid">
             <div class="result-item">Total Sections <span id="outSections">0</span></div>
             <div class="result-item">Total Posts <span id="outPosts">0</span></div>
-            <div class="result-item full-width">Exact Section Length <span id="outSectionLength">0"</span></div>
+            <div class="result-item full-width">Exact Section Length On Center <span id="outSectionLength">0"</span></div>
             <div class="result-item">Pickets per Section <span id="outPickets">0</span></div>
-            <div class="result-item">Actual Spacing <span id="outSpacing">0"</span></div>
+            <div class="result-item">Actual Picket Gap <span id="outSpacing">0"</span></div>
             <div class="result-item full-width">
                 Ring Fit Status 
                 <span id="outFitment">-</span>
@@ -192,18 +192,32 @@
         const S_actual = P >= 0 ? (S_L - (P * W_picket)) / (P + 1) : 0;
 
         // 4. Ring Fitment & Tolerance Logic
-        const diff = Math.abs(S_actual - D_ring);
+        // Calculate the raw delta: negative means gap is smaller than ring (needs shaving),
+        // positive means gap is larger than ring (there is empty space).
+        const delta = S_actual - D_ring;
+        const absDiff = Math.abs(delta);
         const fitmentEl = document.getElementById('outFitment');
         
-        if (diff <= T_gap) {
-            fitmentEl.innerText = `Acceptable (Off by ${diff.toFixed(3)}")`;
-            fitmentEl.style.color = "var(--success)";
-        } else if (S_actual < D_ring) {
-            fitmentEl.innerText = `Out of tolerance (Off by ${diff.toFixed(3)}") `;
-            fitmentEl.style.color = "var(--warning)";
+        if (absDiff <= T_gap) {
+            // It is within tolerance, but we need to specify HOW it fits
+            if (absDiff < 0.001) {
+                fitmentEl.innerText = `Perfect Fit`;
+                fitmentEl.style.color = "var(--success)";
+            } else if (delta < 0) {
+                fitmentEl.innerText = `Acceptable: Shave ring by ${absDiff.toFixed(3)/2}" each side. (${absDiff.toFixed(3)}")`;
+                fitmentEl.style.color = "var(--success)";
+            } else {
+                fitmentEl.innerText = `Acceptable: Gap of ${absDiff.toFixed(3)}"`;
+                fitmentEl.style.color = "var(--success)";
+            }
         } else {
-            fitmentEl.innerText = `Acceptable Gap of ${diff.toFixed(3)}"`;
-            fitmentEl.style.color = "var(--success)";
+            // It is completely out of tolerance
+            if (delta < 0) {
+                fitmentEl.innerText = `Out of tolerance: Gap too small by ${absDiff.toFixed(3)}"`;
+            } else {
+                fitmentEl.innerText = `Out of tolerance: Gap too large by ${absDiff.toFixed(3)}"`;
+            }
+            fitmentEl.style.color = "var(--warning)";
         }
 
         // 5. Calculate Perfect Length Suggestions
@@ -234,7 +248,7 @@
 
         let suggestionsHTML = "";
         
-        if (diff <= 0.001) {
+        if (absDiff <= 0.001) {
             suggestionsHTML = `<em>Current length is already mathematically perfect.</em>`;
         } else {
             if (shorter) {
@@ -242,7 +256,7 @@
                 suggestionsHTML += `
                     <div class="suggestion-item">
                         <strong>Shrink to ${shorter.L.toFixed(2)}"</strong> (-${diffShort.toFixed(2)}")<br>
-                        <span style="font-size: 0.9em; color: #555;">${shorter.N} sections @ ${shorter.S.toFixed(2)}" | ${shorter.P} pickets per sec</span>
+                        <span style="font-size: 0.9em; color: #555;">${shorter.N} sections @ ${shorter.S.toFixed(2)}" | ${shorter.P} pickets per section</span>
                     </div>`;
             }
             if (longer) {
@@ -250,7 +264,7 @@
                 suggestionsHTML += `
                     <div class="suggestion-item">
                         <strong>Stretch to ${longer.L.toFixed(2)}"</strong> (+${diffLong.toFixed(2)}")<br>
-                        <span style="font-size: 0.9em; color: #555;">${longer.N} sections @ ${longer.S.toFixed(2)}" | ${longer.P} pickets per sec</span>
+                        <span style="font-size: 0.9em; color: #555;">${longer.N} sections @ ${longer.S.toFixed(2)}" | ${longer.P} pickets per secction</span>
                     </div>`;
             }
         }
@@ -259,7 +273,7 @@
         // 6. Update DOM Results
         document.getElementById('outSections').innerText = N;
         document.getElementById('outPosts').innerText = numPosts;
-        document.getElementById('outSectionLength').innerText = S_L.toFixed(3) + '"';
+        document.getElementById('outSectionLength').innerText = ((S_L+W_post).toFixed(3)) + '"';
         document.getElementById('outPickets').innerText = P;
         document.getElementById('outSpacing').innerText = S_actual.toFixed(3) + '"';
 
@@ -315,4 +329,3 @@
 </script>
 </body>
 </html>
- 
