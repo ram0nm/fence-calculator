@@ -1,4 +1,4 @@
-This is a highly practical update. In fabrication, nominal dimensions rarely survive the field, and having the ability to define an acceptable tolerance—or pull the overall run length slightly to hit perfect mathematical spacing—will save you a lot of manual trial and error.To achieve this, we need to introduce two new logic paths to your algorithm.1. The Tolerance CheckInstead of just checking if the actual spacing matches the ring diameter perfectly, we check if the absolute difference between them is less than or equal to your allowed gap tolerance ($T_{gap}$).$$|S_{actual} - D_{ring}| \le T_{gap}$$2. Reverse-Calculating the "Perfect" LengthIf the current overall length leaves you with unacceptable gaps or too much shaving, the app needs to reverse the math to find the closest overall lengths that require exactly zero modification to the rings.To find the perfect overall length ($L_{ideal}$), we calculate the ideal section length based on a whole number of pickets ($P$), then multiply that by a valid number of sections ($N$), and finally add the width of the posts ($W_{post}$).$$L_{ideal} = N \cdot \Big(P \cdot W_{picket} + (P + 1) \cdot D_{ring}\Big) + (N + 1) \cdot W_{post}$$The script below loops through nearby section counts and picket counts, runs this formula, filters out anything that exceeds your 96" maximum section length, and then extracts the two perfect lengths immediately above and below your current target.The Updated Code (index.html)You can copy and paste this directly over your existing index.html file in your GitHub repository, commit the change, and your live page will update within a minute or two.HTML<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -277,15 +277,16 @@ This is a highly practical update. In fabrication, nominal dimensions rarely sur
         svg += `<rect x="0" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
         
         // Rails
-        svg += `<rect x="${W_post}" y="10" width="${S_L}" height="2" fill="#555" />`;
-        svg += `<rect x="${W_post}" y="38" width="${S_L}" height="2" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="11" width="${S_L}" height="2" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="5" width="${S_L}" height="2" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="45" width="${S_L}" height="2" fill="#555" />`;
 
         // Pickets & Rings
         let currentX = W_post;
         for (let i = 0; i <= P; i++) {
             let ringRadius = (S_actual > D_ring ? D_ring : S_actual) / 2;
             let ringCx = currentX + (S_actual / 2);
-            let ringCy = 25; 
+            let ringCy = 9; 
             svg += `<circle cx="${ringCx}" cy="${ringCy}" r="${ringRadius}" fill="none" stroke="#0056b3" stroke-width="1" />`;
             
             currentX += S_actual;
