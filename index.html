@@ -195,15 +195,15 @@
         const diff = Math.abs(S_actual - D_ring);
         const fitmentEl = document.getElementById('outFitment');
         
-        if (diff <= T_gap / 2) {
+        if (diff <= T_gap) {
             fitmentEl.innerText = `Acceptable (Off by ${diff.toFixed(3)}")`;
             fitmentEl.style.color = "var(--success)";
         } else if (S_actual < D_ring) {
-            fitmentEl.innerText = `Shave rings by ${diff.toFixed(3)/2}" each side`;
+            fitmentEl.innerText = `Out of tolerance (Off by ${diff.toFixed(3)}") `;
             fitmentEl.style.color = "var(--warning)";
         } else {
-            fitmentEl.innerText = `Leaves a gap of ${diff.toFixed(3)}"`;
-            fitmentEl.style.color = "var(--warning)";
+            fitmentEl.innerText = `Acceptable Gap of ${diff.toFixed(3)}"`;
+            fitmentEl.style.color = "var(--success)";
         }
 
         // 5. Calculate Perfect Length Suggestions
