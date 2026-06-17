@@ -246,14 +246,13 @@
         const T_airGap = parseFloat(document.getElementById('tolAirGap').value) || 0;
 
         // 2. Macro Logic (Sections & Posts)
-        // Calculate Sections based strictly on Center-to-Center Total Length and Max Section
         const N = Math.ceil(L_cc / S_max_oc);
         const numPosts = N > 0 ? N + 1 : 0;
         
         // Calculate Exact On-Center spacing
         const S_OC = N > 0 ? L_cc / N : 0;
         
-        // Clear span (inside post to inside post) used for picket/ring math
+        // Clear span (inside post to inside post)
         const S_clear = Math.max(0, S_OC - W_post);
 
         // 3. Micro Logic (Pickets & Rings)
@@ -268,7 +267,6 @@
             fitmentEl.innerText = `Perfect Fit`;
             fitmentEl.style.color = "var(--success)";
         } else if (delta < 0) {
-            // Gap is smaller than ring: requires shaving
             const shaveAmount = Math.abs(delta);
             if (shaveAmount <= T_shave) {
                 fitmentEl.innerText = `Acceptable: Shave ring by ${(shaveAmount/2).toFixed(3)}" each side. (Total shave: ${shaveAmount.toFixed(3)}")`;
@@ -278,7 +276,6 @@
                 fitmentEl.style.color = "var(--warning)";
             }
         } else {
-            // Gap is larger than ring: leaves an air gap
             if (delta <= T_airGap) {
                 fitmentEl.innerText = `Acceptable: Total air gap of ${delta.toFixed(3)}"`;
                 fitmentEl.style.color = "var(--success)";
@@ -295,18 +292,14 @@
 
         for (let n = startN; n <= endN; n++) {
             for (let p = 1; p < 100; p++) {
-                // Perfect clear span for these pickets and rings
                 let s_ideal_clear = (p * W_picket) + ((p + 1) * D_ring);
-                
-                // Convert back to On-Center dimension
                 let s_ideal_oc = s_ideal_clear + W_post;
                 
                 if (s_ideal_oc <= S_max_oc) {
-                    // Overall center-to-center run length = (Sections * OC Spacing)
                     let l_ideal = n * s_ideal_oc;
                     candidates.push({ L: l_ideal, N: n, P: p, S_OC: s_ideal_oc });
                 } else {
-                    break; // Exceeded max section limit
+                    break;
                 }
             }
         }
@@ -345,10 +338,8 @@
         // 6. Calculate Running Post Spacing
         let runningHTML = "";
         if (numPosts > 0) {
-            // Post 1 center is strictly the origin (0)
             const onCenterSpacing = S_OC;
             for (let i = 1; i <= numPosts; i++) {
-                // By doing (i - 1), the first post (i=1) mathematically equals exactly 0.
                 let postCenter = (i - 1) * onCenterSpacing;
                 runningHTML += `
                     <div class="suggestion-item">
@@ -368,7 +359,7 @@
         document.getElementById('outPickets').innerText = P;
         document.getElementById('outSpacing').innerText = S_actual.toFixed(3) + '"';
 
-        // 8. Draw SVG Schematic (Pass S_clear so the visualizer draws the gap properly)
+        // 8. Draw SVG Schematic
         if(S_clear > 0) drawSchematic(S_clear, W_post, W_picket, P, S_actual, D_ring);
     }
 
@@ -376,23 +367,28 @@
         const totalVisualWidth = S_clear + (W_post * 2);
         const fenceHeight = 50; 
         
+        // Dynamically calculate the middle rail Y and the ring center Y
+        const midRailY = 7.25 + D_ring;
+        const dynamicRingCy = 6.875 + (D_ring / 2);
+        
         let svg = `<svg viewBox="0 0 ${totalVisualWidth} ${fenceHeight}" style="width:100%; height:100%;">`;
         
         // Left Post
         svg += `<rect x="0" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
         
-        // Rails
-        svg += `<rect x="${W_post}" y="11" width="${S_clear}" height="2" fill="#555" />`;
-        svg += `<rect x="${W_post}" y="5" width="${S_clear}" height="2" fill="#555" />`;
-        svg += `<rect x="${W_post}" y="45" width="${S_clear}" height="2" fill="#555" />`;
+        // Rails (Middle rail is now dynamically positioned)
+        svg += `<rect x="${W_post}" y="${midRailY}" width="${S_clear}" height="1.5" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="5" width="${S_clear}" height="1.5" fill="#555" />`;
+        svg += `<rect x="${W_post}" y="45" width="${S_clear}" height="1.5" fill="#555" />`;
 
         // Pickets & Rings
         let currentX = W_post;
         for (let i = 0; i <= P; i++) {
             let ringRadius = (S_actual > D_ring ? D_ring : S_actual) / 2;
             let ringCx = currentX + (S_actual / 2);
-            let ringCy = 9; 
-            svg += `<circle cx="${ringCx}" cy="${ringCy}" r="${ringRadius}" fill="none" stroke="#0056b3" stroke-width="1" />`;
+            
+            // Ring now uses dynamicRingCy to stay perfectly centered between the upper rails
+            svg += `<circle cx="${ringCx}" cy="${dynamicRingCy}" r="${ringRadius}" fill="none" stroke="#0056b3" stroke-width=".75" />`;
             
             currentX += S_actual;
 
