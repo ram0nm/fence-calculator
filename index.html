@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+This is a highly practical update. In fabrication, nominal dimensions rarely survive the field, and having the ability to define an acceptable tolerance—or pull the overall run length slightly to hit perfect mathematical spacing—will save you a lot of manual trial and error.To achieve this, we need to introduce two new logic paths to your algorithm.1. The Tolerance CheckInstead of just checking if the actual spacing matches the ring diameter perfectly, we check if the absolute difference between them is less than or equal to your allowed gap tolerance ($T_{gap}$).$$|S_{actual} - D_{ring}| \le T_{gap}$$2. Reverse-Calculating the "Perfect" LengthIf the current overall length leaves you with unacceptable gaps or too much shaving, the app needs to reverse the math to find the closest overall lengths that require exactly zero modification to the rings.To find the perfect overall length ($L_{ideal}$), we calculate the ideal section length based on a whole number of pickets ($P$), then multiply that by a valid number of sections ($N$), and finally add the width of the posts ($W_{post}$).$$L_{ideal} = N \cdot \Big(P \cdot W_{picket} + (P + 1) \cdot D_{ring}\Big) + (N + 1) \cdot W_{post}$$The script below loops through nearby section counts and picket counts, runs this formula, filters out anything that exceeds your 96" maximum section length, and then extracts the two perfect lengths immediately above and below your current target.The Updated Code (index.html)You can copy and paste this directly over your existing index.html file in your GitHub repository, commit the change, and your live page will update within a minute or two.HTML<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,6 +11,8 @@
             --text-main: #333333;
             --accent: #0056b3;
             --border: #dddddd;
+            --success: #28a745;
+            --warning: #dc3545;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -78,6 +80,24 @@
         .full-width {
             grid-column: 1 / -1;
         }
+        .suggestions-box {
+            background: #e9ecef;
+            text-align: left;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .suggestions-box h3 {
+            margin-top: 0;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .suggestion-item {
+            background: #fff;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 4px solid var(--accent);
+            border-radius: 4px;
+        }
         #visualizer {
             width: 100%;
             height: 200px;
@@ -119,6 +139,10 @@
             <label for="ringDiameter">Target Ring Diameter (inches)</label>
             <input type="number" id="ringDiameter" value="3.75" step="0.1">
         </div>
+        <div class="input-group">
+            <label for="gapTolerance">Gap Tolerance (inches) +/-</label>
+            <input type="number" id="gapTolerance" value="0.0625" step="0.01">
+        </div>
     </div>
 
     <div class="card">
@@ -129,7 +153,15 @@
             <div class="result-item full-width">Exact Section Length <span id="outSectionLength">0"</span></div>
             <div class="result-item">Pickets per Section <span id="outPickets">0</span></div>
             <div class="result-item">Actual Spacing <span id="outSpacing">0"</span></div>
-            <div class="result-item full-width">Ring Fitment Status <span id="outFitment">-</span></div>
+            <div class="result-item full-width">
+                Ring Fit Status 
+                <span id="outFitment">-</span>
+            </div>
+            
+            <div class="full-width suggestions-box">
+                <h3>Perfect Length Suggestions</h3>
+                <div id="outSuggestions">Calculating...</div>
+            </div>
         </div>
     </div>
 
@@ -148,38 +180,91 @@
         const W_post = parseFloat(document.getElementById('postWidth').value) || 1.5;
         const W_picket = parseFloat(document.getElementById('picketWidth').value) || 0.5;
         const D_ring = parseFloat(document.getElementById('ringDiameter').value) || 3.75;
+        const T_gap = parseFloat(document.getElementById('gapTolerance').value) || 0;
 
         // 2. Macro Logic (Sections & Posts)
         const N = Math.ceil((L - W_post) / (S_max + W_post));
-        const numPosts = N + 1;
-        const S_L = (L - (numPosts * W_post)) / N;
+        const numPosts = N > 0 ? N + 1 : 0;
+        const S_L = N > 0 ? (L - (numPosts * W_post)) / N : 0;
 
         // 3. Micro Logic (Pickets & Rings)
-        const P = Math.round((S_L - D_ring) / (D_ring + W_picket));
-        const S_actual = (S_L - (P * W_picket)) / (P + 1);
+        const P = Math.max(0, Math.round((S_L - D_ring) / (D_ring + W_picket)));
+        const S_actual = P >= 0 ? (S_L - (P * W_picket)) / (P + 1) : 0;
 
-        // 4. Ring Fitment
-        let fitment = "";
-        let diff = Math.abs(S_actual - D_ring);
+        // 4. Ring Fitment & Tolerance Logic
+        const diff = Math.abs(S_actual - D_ring);
+        const fitmentEl = document.getElementById('outFitment');
         
-        if (diff < 0.01) {
-            fitment = "Flush Fit (Perfect)";
+        if (diff <= T_gap) {
+            fitmentEl.innerText = `Acceptable (Off by ${diff.toFixed(3)}")`;
+            fitmentEl.style.color = "var(--success)";
         } else if (S_actual < D_ring) {
-            fitment = `Shave rings by ${diff.toFixed(3)}"`;
+            fitmentEl.innerText = `Shave rings by ${diff.toFixed(3)}"`;
+            fitmentEl.style.color = "var(--warning)";
         } else {
-            fitment = `Leaves a gap of ${diff.toFixed(3)}"`;
+            fitmentEl.innerText = `Leaves a gap of ${diff.toFixed(3)}"`;
+            fitmentEl.style.color = "var(--warning)";
         }
 
-        // 5. Update DOM
+        // 5. Calculate Perfect Length Suggestions
+        let candidates = [];
+        // Look at current number of sections, plus/minus a few to find adjacent options
+        let startN = Math.max(1, N - 2);
+        let endN = N + 2;
+
+        for (let n = startN; n <= endN; n++) {
+            // Test picket counts from 1 up to a safe maximum
+            for (let p = 1; p < 100; p++) {
+                let s_ideal = (p * W_picket) + ((p + 1) * D_ring);
+                if (s_ideal <= S_max) {
+                    let l_ideal = (n * s_ideal) + ((n + 1) * W_post);
+                    candidates.push({ L: l_ideal, N: n, P: p, S: s_ideal });
+                } else {
+                    break; // Section length exceeded max, stop incrementing pickets for this N
+                }
+            }
+        }
+
+        // Sort candidates by total length
+        candidates.sort((a, b) => a.L - b.L);
+
+        // Find closest shorter and longer lengths
+        let shorter = candidates.slice().reverse().find(c => c.L < L - 0.001);
+        let longer = candidates.find(c => c.L > L + 0.001);
+
+        let suggestionsHTML = "";
+        
+        if (diff <= 0.001) {
+            suggestionsHTML = `<em>Current length is already mathematically perfect.</em>`;
+        } else {
+            if (shorter) {
+                let diffShort = L - shorter.L;
+                suggestionsHTML += `
+                    <div class="suggestion-item">
+                        <strong>Shrink to ${shorter.L.toFixed(2)}"</strong> (-${diffShort.toFixed(2)}")<br>
+                        <span style="font-size: 0.9em; color: #555;">${shorter.N} sections @ ${shorter.S.toFixed(2)}" | ${shorter.P} pickets per sec</span>
+                    </div>`;
+            }
+            if (longer) {
+                let diffLong = longer.L - L;
+                suggestionsHTML += `
+                    <div class="suggestion-item">
+                        <strong>Stretch to ${longer.L.toFixed(2)}"</strong> (+${diffLong.toFixed(2)}")<br>
+                        <span style="font-size: 0.9em; color: #555;">${longer.N} sections @ ${longer.S.toFixed(2)}" | ${longer.P} pickets per sec</span>
+                    </div>`;
+            }
+        }
+        document.getElementById('outSuggestions').innerHTML = suggestionsHTML || "No valid suggestions found.";
+
+        // 6. Update DOM Results
         document.getElementById('outSections').innerText = N;
         document.getElementById('outPosts').innerText = numPosts;
         document.getElementById('outSectionLength').innerText = S_L.toFixed(3) + '"';
         document.getElementById('outPickets').innerText = P;
         document.getElementById('outSpacing').innerText = S_actual.toFixed(3) + '"';
-        document.getElementById('outFitment').innerText = fitment;
 
-        // 6. Draw SVG Schematic
-        drawSchematic(S_L, W_post, W_picket, P, S_actual, D_ring);
+        // 7. Draw SVG Schematic
+        if(S_L > 0) drawSchematic(S_L, W_post, W_picket, P, S_actual, D_ring);
     }
 
     function drawSchematic(S_L, W_post, W_picket, P, S_actual, D_ring) {
@@ -188,46 +273,44 @@
         
         let svg = `<svg viewBox="0 0 ${totalVisualWidth} ${fenceHeight}" style="width:100%; height:100%;">`;
         
-        // Draw Left Post
+        // Left Post
         svg += `<rect x="0" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
         
-        // Top and Bottom Rails
+        // Rails
         svg += `<rect x="${W_post}" y="10" width="${S_L}" height="2" fill="#555" />`;
         svg += `<rect x="${W_post}" y="38" width="${S_L}" height="2" fill="#555" />`;
 
-        // Draw Pickets & Rings
+        // Pickets & Rings
         let currentX = W_post;
         for (let i = 0; i <= P; i++) {
-            // Draw Ring in the space (if it fits visually)
             let ringRadius = (S_actual > D_ring ? D_ring : S_actual) / 2;
             let ringCx = currentX + (S_actual / 2);
-            let ringCy = 25; // center vertical
+            let ringCy = 25; 
             svg += `<circle cx="${ringCx}" cy="${ringCy}" r="${ringRadius}" fill="none" stroke="#0056b3" stroke-width="1" />`;
             
             currentX += S_actual;
 
-            // Draw Picket
             if (i < P) {
                 svg += `<rect x="${currentX}" y="5" width="${W_picket}" height="40" fill="#666" />`;
                 currentX += W_picket;
             }
         }
 
-        // Draw Right Post
+        // Right Post
         svg += `<rect x="${totalVisualWidth - W_post}" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
         svg += `</svg>`;
 
         document.getElementById('visualizer').innerHTML = svg;
     }
 
-    // Attach event listeners to update automatically
+    // Attach event listeners
     const inputs = document.querySelectorAll('input');
     inputs.forEach(input => {
         input.addEventListener('input', calculate);
     });
 
-    // Run once on load
+    // Initial run
     calculate();
 </script>
 </body>
-</html>  
+</html>
