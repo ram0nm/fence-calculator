@@ -195,11 +195,11 @@
         const diff = Math.abs(S_actual - D_ring);
         const fitmentEl = document.getElementById('outFitment');
         
-        if (diff <= T_gap) {
+        if (diff <= T_gap / 2) {
             fitmentEl.innerText = `Acceptable (Off by ${diff.toFixed(3)}")`;
             fitmentEl.style.color = "var(--success)";
         } else if (S_actual < D_ring) {
-            fitmentEl.innerText = `Shave rings by ${diff.toFixed(3)}"`;
+            fitmentEl.innerText = `Shave rings by ${diff.toFixed(3)/2}" each side`;
             fitmentEl.style.color = "var(--warning)";
         } else {
             fitmentEl.innerText = `Leaves a gap of ${diff.toFixed(3)}"`;
