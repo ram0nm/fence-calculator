@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -37,11 +38,24 @@
             display: flex;
             flex-direction: column;
         }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
         h2 {
             margin-top: 0;
             color: var(--accent);
             border-bottom: 2px solid var(--border);
             padding-bottom: 10px;
+        }
+        .card-header h2 {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
         }
         .input-group {
             margin-bottom: 15px;
@@ -52,14 +66,141 @@
             margin-bottom: 5px;
             font-size: 0.9em;
         }
+        .flex-inputs {
+            display: flex;
+            gap: 15px;
+        }
+        .input-wrapper {
+            position: relative;
+            flex: 1;
+        }
         input {
             width: 100%;
-            padding: 8px;
+            padding: 8px 30px 8px 8px; 
             border: 1px solid var(--border);
             border-radius: 4px;
             box-sizing: border-box;
             font-size: 1em;
+            cursor: text;
         }
+        .input-wrapper .unit {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 0.9em;
+            pointer-events: none; 
+        }
+        
+        /* Reference Group Styles */
+        .reference-group {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 6px;
+        }
+        .reference-header {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 2px solid #dcdcdc; 
+            padding-bottom: 8px; 
+            margin-bottom: 10px;
+        }
+        .reference-header h3 {
+            margin: 0; 
+            font-size: 1em; 
+            color: var(--text-main);
+        }
+        .btn-edit {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: opacity 0.2s;
+        }
+        .btn-edit:hover {
+            opacity: 0.8;
+        }
+        .reference-group p {
+            margin: 5px 0;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #dcdcdc;
+            padding-bottom: 4px;
+        }
+        .reference-group p:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .modal-header h3 {
+            margin: 0;
+            color: var(--accent);
+        }
+        .close-btn {
+            background: none; 
+            border: none; 
+            font-size: 1.5em; 
+            cursor: pointer; 
+            color: #666;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .setting-item label {
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .setting-item input {
+            padding: 8px;
+            font-size: 0.95em;
+            padding-right: 8px; /* remove unit padding for generic fields */
+        }
+        .modal-footer {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
         .results-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -119,62 +260,61 @@
             background: var(--border); 
             border-radius: 4px;
         }
-        .visualizer-container {
-            width: 100%;
-            height: 350px;
-            background-color: #e9ecef;
-            border-radius: 6px;
-            margin-top: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            flex-grow: 1;
-        }
         @media (max-width: 900px) {
             .container { grid-template-columns: 1fr; }
+            .settings-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 <div class="container">
+    
     <div class="card">
-        <h2>Fence Parameters</h2>
-        <div class="input-group">
-            <label for="runLength">Overall Run Length (On-Center) (inches)</label>
-            <input type="number" id="runLength" value="300" step="0.1" min=0>
+        <div class="card-header">
+            <h2>Fence Parameters</h2>
+            <button id="btnOpenSettings" class="btn-edit">⚙️ Advanced Settings</button>
         </div>
         <div class="input-group">
-            <label for="maxSection">Max Section Length (On-Center) (inches)</label>
-            <input type="number" id="maxSection" value="96" step="0.1">
+            <label title="Enter the total length measured center-to-center from the first post to the last post.">
+                Overall Run Length (On-Center) ⓘ
+            </label>
+            <div class="flex-inputs">
+                <div class="input-wrapper" title="Feet">
+                    <input type="number" id="runLengthFeet" value="25" step="1" min="0">
+                    <span class="unit">ft</span>
+                </div>
+                <div class="input-wrapper" title="Inches">
+                    <input type="number" id="runLengthInches" value="0" step="0.1" min="0">
+                    <span class="unit">in</span>
+                </div>
+            </div>
         </div>
-        <div class="input-group">
-            <label for="postWidth">Post Width (inches)</label>
-            <input type="number" id="postWidth" value="2" step="0.1">
-        </div>
-        <div class="input-group">
-            <label for="picketWidth">Picket Width (inches)</label>
-            <input type="number" id="picketWidth" value="0.5" step="0.1">
-        </div>
-        <div class="input-group">
-            <label for="ringDiameter">Target Ring Diameter (inches)</label>
-            <input type="number" id="ringDiameter" value="3.75" step="0.1">
-        </div>
-        <div class="input-group">
-            <label for="ringThickness">Ring Thickness (inches)</label>
-            <input type="number" id="ringThickness" value="0.5" step="0.05" min="0.05">
-        </div>
-        <div class="input-group">
-            <label for="tolShaving">Max Ring Shaving (inches)</label>
-            <input type="number" id="tolShaving" value="0.125" step="0.01" min=0>
-        </div>
-        <div class="input-group">
-            <label for="tolAirGap">Max Air Gap (inches)</label>
-            <input type="number" id="tolAirGap" value="0.25" step="0.01" min=0>
+        
+        <div class="reference-group">
+            <div class="reference-header">
+                <h3>Constraints</h3>
+            </div>
+            <p><span>Max Section Length (On-Center)</span> <strong id="disp_sMaxOc">96"</strong></p>
+            <p><span>Post Width</span> <strong id="disp_wPost">2"</strong></p>
+            <p><span>Picket Width</span> <strong id="disp_wPicket">0.5"</strong></p>
+            <p><span>Target Ring Diameter</span> <strong id="disp_dRing">3.75"</strong></p>
+            <p><span>Ring Thickness</span> <strong id="disp_tRing">0.5"</strong></p>
+            <p><span>Max Ring Shaving</span> <strong id="disp_tShave">0.125"</strong></p>
+            <p><span>Max Air Gap</span> <strong id="disp_tAirGap">0.25"</strong></p>
+            <p><span>Min Air Gap</span> <strong id="disp_tMinAirGap">0.0625"</strong></p>
+            <p><span>Ring Mfg Tolerance</span> <strong id="disp_tRingMfg">0.0625"</strong></p>
         </div>
     </div>
 
     <div class="card">
+        <h2>Running Post Layout</h2>
+        <p style="font-size: 0.9em; color: #666; margin-top: 0;">List of running Post Spacing dimensions.</p>
+        <div class="scrollable-box" style="background: var(--bg-color); padding: 15px; border-radius: 6px;">
+            <div id="outRunningSpacing">Calculating...</div>
+        </div>
+    </div>
+
+    <div class="card full-width">
         <h2>Calculated Results</h2>
         <div class="results-grid">
             <div class="result-item">Total Sections <span id="outSections">0</span></div>
@@ -193,29 +333,78 @@
             </div>
         </div>
     </div>
+</div>
 
-    <div class="card">
-        <h2>Running Post Layout</h2>
-        <p style="font-size: 0.9em; color: #666; margin-top: 0;">List of running Post Spacing dimensions.</p>
-        <div class="scrollable-box" style="background: var(--bg-color); padding: 15px; border-radius: 6px;">
-            <div id="outRunningSpacing">Calculating...</div>
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Advanced Constraints</h3>
+            <button id="btnCloseSettings" class="close-btn">&times;</button>
         </div>
-    </div>
-
-    <div class="card">
-        <h2>Single Section Schematic</h2>
-        <p style="font-size: 0.9em; color: #666; margin-top: 0;">Used to visualize single fence section.</p>
-        <div id="visualizer" class="visualizer-container"></div>
-    </div>
-
-    <div class="card full-width">
-        <h2>Ring Detail</h2>
-        <p style="font-size: 0.9em; color: #666; margin-top: 0;">Used to see ring spacing.</p>
-        <div id="detailVisualizer" class="visualizer-container" style="height: 300px;"></div>
+        <div class="settings-grid">
+            <div class="setting-item">
+                <label>Max Section Length (OC) [in]</label>
+                <input type="number" id="sMaxOc" value="96" step="1">
+            </div>
+            <div class="setting-item">
+                <label>Post Width [in]</label>
+                <input type="number" id="wPost" value="2" step="0.1">
+            </div>
+            <div class="setting-item">
+                <label>Picket Width [in]</label>
+                <input type="number" id="wPicket" value="0.5" step="0.1">
+            </div>
+            <div class="setting-item">
+                <label>Target Ring Diameter [in]</label>
+                <input type="number" id="dRing" value="3.75" step="0.01">
+            </div>
+            <div class="setting-item">
+                <label>Ring Thickness [in]</label>
+                <input type="number" id="tRing" value="0.5" step="0.1">
+            </div>
+            <div class="setting-item">
+                <label>Max Ring Shaving [in]</label>
+                <input type="number" id="tShave" value="0.125" step="0.01">
+            </div>
+            <div class="setting-item">
+                <label>Max Air Gap [in]</label>
+                <input type="number" id="tAirGap" value="0.25" step="0.01">
+            </div>
+            <div class="setting-item">
+                <label>Min Air Gap [in]</label>
+                <input type="number" id="tMinAirGap" value="0.0625" step="0.001">
+            </div>
+            <div class="setting-item">
+                <label>Ring Mfg Tolerance [in]</label>
+                <input type="number" id="tRingMfg" value="0.0625" step="0.001">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="btnSaveSettings" class="btn-edit" style="font-size: 1em; padding: 10px 20px;">Done</button>
+        </div>
     </div>
 </div>
 
 <script>
+    // Modal Interaction Logic
+    const modal = document.getElementById('settingsModal');
+    const btnOpen = document.getElementById('btnOpenSettings');
+    const btnClose = document.getElementById('btnCloseSettings');
+    const btnSave = document.getElementById('btnSaveSettings');
+
+    btnOpen.onclick = () => modal.style.display = "flex";
+    btnClose.onclick = () => modal.style.display = "none";
+    btnSave.onclick = () => modal.style.display = "none";
+
+    // Close modal if user clicks outside of it
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // Helper functions for formatting
     function toFeetInches(totalInches) {
         if (totalInches === 0) return `0' - 0"`;
 
@@ -258,14 +447,32 @@
     }
 
     function calculate() {
-        const L_cc = parseFloat(document.getElementById('runLength').value) || 0;
-        const S_max_oc = parseFloat(document.getElementById('maxSection').value) || 96;
-        const W_post = parseFloat(document.getElementById('postWidth').value) || 2;
-        const W_picket = parseFloat(document.getElementById('picketWidth').value) || 0.5;
-        const D_ring = parseFloat(document.getElementById('ringDiameter').value) || 3.75;
-        const T_ring = parseFloat(document.getElementById('ringThickness').value) || 0.5;
-        const T_shave = parseFloat(document.getElementById('tolShaving').value) || 0;
-        const T_airGap = parseFloat(document.getElementById('tolAirGap').value) || 0;
+        // Read input dimensions
+        const feet = parseFloat(document.getElementById('runLengthFeet').value) || 0;
+        const inches = parseFloat(document.getElementById('runLengthInches').value) || 0;
+        const L_cc = (feet * 12) + inches;
+
+        // Read dynamic constraints
+        const S_max_oc = parseFloat(document.getElementById('sMaxOc').value) || 96;
+        const W_post = parseFloat(document.getElementById('wPost').value) || 2;
+        const W_picket = parseFloat(document.getElementById('wPicket').value) || 0.5;
+        const D_ring = parseFloat(document.getElementById('dRing').value) || 3.75;
+        const T_ring = parseFloat(document.getElementById('tRing').value) || 0.5;
+        const T_shave = parseFloat(document.getElementById('tShave').value) || 0.125;
+        const T_airGap = parseFloat(document.getElementById('tAirGap').value) || 0.25;
+        const T_min_airGap = parseFloat(document.getElementById('tMinAirGap').value) || 0; 
+        const T_ring_mfg = parseFloat(document.getElementById('tRingMfg').value) || 0.0625;
+
+        // Update the display text in the main card to match inputs
+        document.getElementById('disp_sMaxOc').innerText = S_max_oc + '"';
+        document.getElementById('disp_wPost').innerText = W_post + '"';
+        document.getElementById('disp_wPicket').innerText = W_picket + '"';
+        document.getElementById('disp_dRing').innerText = D_ring + '"';
+        document.getElementById('disp_tRing').innerText = T_ring + '"';
+        document.getElementById('disp_tShave').innerText = T_shave + '"';
+        document.getElementById('disp_tAirGap').innerText = T_airGap + '"';
+        document.getElementById('disp_tMinAirGap').innerText = T_min_airGap + '"';
+        document.getElementById('disp_tRingMfg').innerText = T_ring_mfg + '"';
 
         const N = Math.ceil(L_cc / S_max_oc);
         const numPosts = N > 0 ? N + 1 : 0;
@@ -279,8 +486,13 @@
         const fitmentEl = document.getElementById('outFitment');
         
         if (Math.abs(delta) < 0.001) {
-            fitmentEl.innerText = `Perfect Fit`;
-            fitmentEl.style.color = "var(--success)";
+            if (T_min_airGap > 0) {
+                fitmentEl.innerText = `Out of tolerance: Perfect fit leaves 0" gap (Min required: ${T_min_airGap}")`;
+                fitmentEl.style.color = "var(--warning)";
+            } else {
+                fitmentEl.innerText = `Perfect Fit`;
+                fitmentEl.style.color = "var(--success)";
+            }
         } else if (delta < 0) {
             const shaveAmount = Math.abs(delta);
             if (shaveAmount <= T_shave) {
@@ -291,9 +503,12 @@
                 fitmentEl.style.color = "var(--warning)";
             }
         } else {
-            if (delta <= T_airGap) {
+            if (delta >= T_min_airGap && delta <= T_airGap) {
                 fitmentEl.innerText = `Acceptable: Total air gap of ${delta.toFixed(3)}"`;
                 fitmentEl.style.color = "var(--success)";
+            } else if (delta < T_min_airGap) {
+                fitmentEl.innerText = `Out of tolerance: Air gap of ${delta.toFixed(3)}" is too tight (Min required: ${T_min_airGap}")`;
+                fitmentEl.style.color = "var(--warning)";
             } else {
                 fitmentEl.innerText = `Out of tolerance: Air gap of ${delta.toFixed(3)}" (Max allowed: ${T_airGap}")`;
                 fitmentEl.style.color = "var(--warning)";
@@ -323,7 +538,7 @@
         let longer = candidates.find(c => c.L > L_cc + 0.001);
 
         let suggestionsHTML = "";
-        if (Math.abs(delta) <= 0.001) {
+        if (Math.abs(delta) <= 0.001 && T_min_airGap === 0) {
             suggestionsHTML = `<em>Current length is already mathematically perfect.</em>`;
         } else {
             if (shorter) {
@@ -370,177 +585,22 @@
         document.getElementById('outSectionLength').innerText = S_OC.toFixed(3) + '"';
         document.getElementById('outPickets').innerText = P;
         document.getElementById('outSpacing').innerText = S_actual.toFixed(3) + '"';
-
-        if(S_clear > 0) {
-            drawSchematic(S_clear, W_post, W_picket, P, S_actual, D_ring, S_max_oc, T_ring);
-            drawDetailSchematic(delta, S_actual, D_ring, W_picket, T_ring);
-        }
     }
 
-    function drawSchematic(S_clear, W_post, W_picket, P, S_actual, D_ring, S_max_oc, T_ring) {
-        const maxVisualWidth = S_max_oc + (W_post * 2);
-        const actualVisualWidth = S_clear + (W_post * 2);
-        const fenceHeight = 50; 
-        
-        const offsetX = Math.max(0, (maxVisualWidth - actualVisualWidth) / 2);
-        
-        const topRailY = 5;
-        const railHeight = 1.5;
-        const bottomOfTopRail = topRailY + railHeight; 
-        
-        const dynamicRingCy = bottomOfTopRail + (D_ring / 2); 
-        const midRailY = bottomOfTopRail + D_ring; 
-        
-        let svg = `<svg viewBox="0 0 ${maxVisualWidth} ${fenceHeight}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:100%;">`;
-        svg += `<g transform="translate(${offsetX}, 0)">`;
-        
-        // 1. Rails
-        svg += `<rect x="${W_post}" y="${topRailY}" width="${S_clear}" height="${railHeight}" fill="#555" />`;
-        svg += `<rect x="${W_post}" y="${midRailY}" width="${S_clear}" height="${railHeight}" fill="#555" />`;
-        svg += `<rect x="${W_post}" y="45" width="${S_clear}" height="${railHeight}" fill="#555" />`;
+    // Event listeners for primary inputs
+    document.getElementById('runLengthFeet').addEventListener('input', calculate);
+    document.getElementById('runLengthInches').addEventListener('input', calculate);
 
-        // 2. Draw Rings
-        let ringX = W_post;
-        let strokeW = T_ring;
-        let R = (D_ring - strokeW) / 2; 
-        let uniqueIdBase = Math.random().toString(36).substr(2, 9);
-        
-        for (let i = 0; i <= P; i++) {
-            let ringCx = ringX + (S_actual / 2);
-            let isShaved = S_actual < D_ring;
-            
-            if (isShaved) {
-                let clipId = `clip-ring-${i}-${uniqueIdBase}`;
-                let xOffset = Math.max(0, (S_actual - strokeW) / 2); 
-                let yOffset = Math.sqrt(Math.max(0, R * R - xOffset * xOffset));
-                
-                svg += `<clipPath id="${clipId}">
-                            <rect x="${ringX}" y="0" width="${S_actual}" height="${fenceHeight}" />
-                        </clipPath>`;
-                        
-                svg += `<circle cx="${ringCx}" cy="${dynamicRingCy}" r="${R}" fill="rgba(220, 53, 69, 0.15)" stroke="rgba(220, 53, 69, 0.4)" stroke-width="${strokeW}" />`;
-                
-                svg += `<circle cx="${ringCx}" cy="${dynamicRingCy}" r="${R}" fill="none" stroke="#0056b3" stroke-width="${strokeW}" clip-path="url(#${clipId})" />`;
-                svg += `<line x1="${ringCx - xOffset}" y1="${dynamicRingCy - yOffset}" x2="${ringCx - xOffset}" y2="${dynamicRingCy + yOffset}" stroke="#0056b3" stroke-width="${strokeW}" />`;
-                svg += `<line x1="${ringCx + xOffset}" y1="${dynamicRingCy - yOffset}" x2="${ringCx + xOffset}" y2="${dynamicRingCy + yOffset}" stroke="#0056b3" stroke-width="${strokeW}" />`;
-            } else {
-                svg += `<circle cx="${ringCx}" cy="${dynamicRingCy}" r="${R}" fill="none" stroke="#0056b3" stroke-width="${strokeW}" />`;
-            }
-            
-            ringX += S_actual + W_picket;
-        }
-
-        // 3. Draw Pickets
-        let picketX = W_post + S_actual;
-        for (let i = 0; i < P; i++) {
-            svg += `<rect x="${picketX}" y="5" width="${W_picket}" height="40" fill="#666" />`;
-            picketX += W_picket + S_actual;
-        }
-
-        // 4. Draw Posts
-        svg += `<rect x="0" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
-        svg += `<rect x="${actualVisualWidth - W_post}" y="0" width="${W_post}" height="${fenceHeight}" fill="#333" />`;
-        
-        svg += `</g></svg>`;
-
-        document.getElementById('visualizer').innerHTML = svg;
-    }
-
-    function drawDetailSchematic(delta, S_actual, D_ring, W_picket, T_ring) {
-        // Create a responsive padded viewport. Padding increased heavily on the sides to harbor horizontal leader dimensions.
-        const pad = 4.5;
-        const vbWidth = S_actual + (2 * W_picket) + (2 * pad);
-        const vbHeight = D_ring + 4;
-        const startX = -W_picket - pad;
-        const startY = -2;
-
-        let svg = `<svg viewBox="${startX} ${startY} ${vbWidth} ${vbHeight}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:100%; font-family: sans-serif;">`;
-        
-        // Definitions for arrows
-        svg += `<defs>
-                    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#28a745" />
-                    </marker>
-                </defs>`;
-
-        // 1. Draw Pickets
-        svg += `<rect x="${-W_picket}" y="${startY}" width="${W_picket}" height="${vbHeight}" fill="#666" />`;
-        svg += `<rect x="${S_actual}" y="${startY}" width="${W_picket}" height="${vbHeight}" fill="#666" />`;
-
-        // 2. Draw Ring
-        let ringCx = S_actual / 2;
-        let ringCy = D_ring / 2;
-        let R = (D_ring - T_ring) / 2;
-        let isShaved = delta < 0;
-
-        if (isShaved) {
-            let clipId = `clip-detail-${Math.random().toString(36).substr(2, 9)}`;
-            let xOffset = Math.max(0, (S_actual - T_ring) / 2);
-            let yOffset = Math.sqrt(Math.max(0, R * R - xOffset * xOffset));
-
-            // Interference areas colored in red
-            svg += `<circle cx="${ringCx}" cy="${ringCy}" r="${R}" fill="rgba(220, 53, 69, 0.15)" stroke="rgba(220, 53, 69, 0.4)" stroke-width="${T_ring}" />`;
-
-            // Bound ring
-            svg += `<clipPath id="${clipId}">
-                        <rect x="0" y="${startY}" width="${S_actual}" height="${vbHeight}" />
-                    </clipPath>`;
-            svg += `<circle cx="${ringCx}" cy="${ringCy}" r="${R}" fill="none" stroke="#0056b3" stroke-width="${T_ring}" clip-path="url(#${clipId})" />`;
-
-            // Shave lines
-            svg += `<line x1="${ringCx - xOffset}" y1="${ringCy - yOffset}" x2="${ringCx - xOffset}" y2="${ringCy + yOffset}" stroke="#dc3545" stroke-width="0.05" />`;
-            svg += `<line x1="${ringCx + xOffset}" y1="${ringCy - yOffset}" x2="${ringCx + xOffset}" y2="${ringCy + yOffset}" stroke="#dc3545" stroke-width="0.05" />`;
-
-            // Text for shave pulled horizontally to the outboard sides with leader lines
-            let shaveVal = (Math.abs(delta)/2).toFixed(3);
-            
-            // Left Shave
-            svg += `<text x="${-W_picket - 0.5}" y="${ringCy + 0.15}" fill="#dc3545" font-size="0.5" font-weight="bold" text-anchor="end">Shave: ${shaveVal}"</text>`;
-            svg += `<line x1="${-W_picket - 0.4}" y1="${ringCy}" x2="${-W_picket}" y2="${ringCy}" stroke="#dc3545" stroke-width="0.05" stroke-dasharray="0.1,0.1" />`;
-            
-            // Right Shave
-            svg += `<text x="${S_actual + W_picket + 0.5}" y="${ringCy + 0.15}" fill="#dc3545" font-size="0.5" font-weight="bold" text-anchor="start">Shave: ${shaveVal}"</text>`;
-            svg += `<line x1="${S_actual + W_picket + 0.4}" y1="${ringCy}" x2="${S_actual + W_picket}" y2="${ringCy}" stroke="#dc3545" stroke-width="0.05" stroke-dasharray="0.1,0.1" />`;
-
-        } else {
-            // Unobstructed ring
-            svg += `<circle cx="${ringCx}" cy="${ringCy}" r="${R}" fill="none" stroke="#0056b3" stroke-width="${T_ring}" />`;
-
-            if (delta > 0) {
-                // Gap Dimensioning Lines
-                let gap = delta / 2;
-                
-                // Left Gap
-                svg += `<line x1="0" y1="${ringCy}" x2="${gap}" y2="${ringCy}" stroke="#28a745" stroke-width="0.05" marker-start="url(#arrowGreen)" marker-end="url(#arrowGreen)" />`;
-                svg += `<text x="${-W_picket - 0.5}" y="${ringCy + 0.15}" fill="#28a745" font-size="0.5" font-weight="bold" text-anchor="end">Gap: ${gap.toFixed(3)}"</text>`;
-                svg += `<line x1="${-W_picket - 0.4}" y1="${ringCy}" x2="0" y2="${ringCy}" stroke="#28a745" stroke-width="0.05" stroke-dasharray="0.1,0.1" />`;
-                
-                // Right Gap
-                svg += `<line x1="${S_actual - gap}" y1="${ringCy}" x2="${S_actual}" y2="${ringCy}" stroke="#28a745" stroke-width="0.05" marker-start="url(#arrowGreen)" marker-end="url(#arrowGreen)" />`;
-                svg += `<text x="${S_actual + W_picket + 0.5}" y="${ringCy + 0.15}" fill="#28a745" font-size="0.5" font-weight="bold" text-anchor="start">Gap: ${gap.toFixed(3)}"</text>`;
-                svg += `<line x1="${S_actual + W_picket + 0.4}" y1="${ringCy}" x2="${S_actual}" y2="${ringCy}" stroke="#28a745" stroke-width="0.05" stroke-dasharray="0.1,0.1" />`;
-            }
-        }
-
-        // Total Spacing Dimension (Bottom)
-        let dimY = D_ring + 1.5;
-        svg += `<line x1="0" y1="${dimY}" x2="${S_actual}" y2="${dimY}" stroke="#333" stroke-width="0.05" />`;
-        svg += `<line x1="0" y1="${dimY-0.2}" x2="0" y2="${dimY+0.2}" stroke="#333" stroke-width="0.05" />`;
-        svg += `<line x1="${S_actual}" y1="${dimY-0.2}" x2="${S_actual}" y2="${dimY+0.2}" stroke="#333" stroke-width="0.05" />`;
-        svg += `<text x="${-W_picket - 0.2}" y="${dimY + 0.15}" fill="#333" font-size="0.45" font-weight="bold" text-anchor="end">Picket Gap: ${S_actual.toFixed(3)}"</text>`;
-
-        // Target Ring OD Dimension (Top Left)
-        svg += `<text x="${startX - 1}" y="${startY + 0.6}" fill="#0056b3" font-size="0.45" font-weight="bold" text-anchor="start">Target Ring OD: ${D_ring.toFixed(3)}"</text>`;
-
-        svg += `</svg>`;
-        document.getElementById('detailVisualizer').innerHTML = svg;
-    }
-
-    const inputs = document.querySelectorAll('input');
-    inputs.forEach(input => {
-        input.addEventListener('input', calculate);
+    // Event listeners for advanced constraints
+    const constraintIds = [
+        'sMaxOc', 'wPost', 'wPicket', 'dRing', 'tRing', 
+        'tShave', 'tAirGap', 'tMinAirGap', 'tRingMfg'
+    ];
+    constraintIds.forEach(id => {
+        document.getElementById(id).addEventListener('input', calculate);
     });
 
+    // Initial calculation
     calculate();
 </script>
 </body>
