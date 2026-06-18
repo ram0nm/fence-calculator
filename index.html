@@ -193,7 +193,7 @@
         .setting-item input {
             padding: 8px;
             font-size: 0.95em;
-            padding-right: 8px; /* remove unit padding for generic fields */
+            padding-right: 8px; 
         }
         .modal-footer {
             margin-top: 20px;
@@ -335,7 +335,6 @@
     </div>
 </div>
 
-<!-- Settings Modal -->
 <div id="settingsModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -479,50 +478,58 @@
         const S_OC = N > 0 ? L_cc / N : 0;
         const S_clear = Math.max(0, S_OC - W_post);
 
-        const P = Math.max(0, Math.round((S_clear - D_ring) / (D_ring + W_picket)));
+        // --- UPDATED FABRICATION LOGIC ---
+        // Target gap incorporates manufacturing tolerance to guarantee worst-case rings drop in.
+        const target_gap = D_ring + T_ring_mfg;
+
+        // Determine picket count targeting the expanded, safe gap
+        const P = Math.max(0, Math.round((S_clear - target_gap) / (target_gap + W_picket)));
+        
+        // Actual gap remains a fixed geometric reality based on the physical section length
         const S_actual = P >= 0 ? (S_clear - (P * W_picket)) / (P + 1) : 0;
 
-        const delta = S_actual - D_ring;
+        // Fitment Status
+        const delta = S_actual - D_ring; // Expected gap against a perfectly nominal ring
+        const delta_worst_case = S_actual - target_gap; // Expected gap against an oversized ring
         const fitmentEl = document.getElementById('outFitment');
         
-        if (Math.abs(delta) < 0.001) {
-            if (T_min_airGap > 0) {
-                fitmentEl.innerText = `Out of tolerance: Perfect fit leaves 0" gap (Min required: ${T_min_airGap}")`;
-                fitmentEl.style.color = "var(--warning)";
-            } else {
-                fitmentEl.innerText = `Perfect Fit`;
-                fitmentEl.style.color = "var(--success)";
-            }
-        } else if (delta < 0) {
-            const shaveAmount = Math.abs(delta);
+        if (Math.abs(delta_worst_case) < 0.001) {
+            fitmentEl.innerText = `Perfect Fit (Accounts for ${T_ring_mfg}" Mfg Tolerance)`;
+            fitmentEl.style.color = "var(--success)";
+        } else if (delta_worst_case < 0) {
+            const shaveAmount = Math.abs(delta_worst_case);
             if (shaveAmount <= T_shave) {
-                fitmentEl.innerText = `Acceptable: Shave ring by ${(shaveAmount/2).toFixed(3)}" each side. (Total shave: ${shaveAmount.toFixed(3)}")`;
+                fitmentEl.innerText = `Acceptable: Max-tolerance rings may require shaving ${(shaveAmount/2).toFixed(3)}" per side. (Max shave: ${shaveAmount.toFixed(3)}")`;
                 fitmentEl.style.color = "var(--success)";
             } else {
-                fitmentEl.innerText = `Out of tolerance: Requires shaving ${shaveAmount.toFixed(3)}" (Max allowed: ${T_shave}")`;
+                fitmentEl.innerText = `Out of tolerance: Max-tolerance rings require shaving ${shaveAmount.toFixed(3)}" (Max allowed: ${T_shave}")`;
                 fitmentEl.style.color = "var(--warning)";
             }
         } else {
             if (delta >= T_min_airGap && delta <= T_airGap) {
-                fitmentEl.innerText = `Acceptable: Total air gap of ${delta.toFixed(3)}"`;
+                fitmentEl.innerText = `Acceptable: Expected nominal air gap of ${delta.toFixed(3)}"`;
                 fitmentEl.style.color = "var(--success)";
             } else if (delta < T_min_airGap) {
-                fitmentEl.innerText = `Out of tolerance: Air gap of ${delta.toFixed(3)}" is too tight (Min required: ${T_min_airGap}")`;
+                fitmentEl.innerText = `Out of tolerance: Nominal air gap of ${delta.toFixed(3)}" is too tight (Min required: ${T_min_airGap}")`;
                 fitmentEl.style.color = "var(--warning)";
             } else {
-                fitmentEl.innerText = `Out of tolerance: Air gap of ${delta.toFixed(3)}" (Max allowed: ${T_airGap}")`;
+                fitmentEl.innerText = `Out of tolerance: Nominal air gap of ${delta.toFixed(3)}" (Max allowed: ${T_airGap}")`;
                 fitmentEl.style.color = "var(--warning)";
             }
         }
 
+        // --- UPDATED SUGGESTIONS LOGIC ---
         let candidates = [];
         let startN = Math.max(1, N - 2);
         let endN = N + 2;
 
         for (let n = startN; n <= endN; n++) {
             for (let p = 1; p < 100; p++) {
-                let s_ideal_clear = (p * W_picket) + ((p + 1) * D_ring);
-                let s_ideal_oc = s_ideal_clear + W_post;
+                // Ideal clear span now builds in the manufacturing tolerance padding
+                let s_ideal_clear = (p * W_picket) + ((p + 1) * target_gap);
+                
+                // Calculates standardized length on-center
+                let s_ideal_oc = s_ideal_clear + W_post; 
                 
                 if (s_ideal_oc <= S_max_oc) {
                     let l_ideal = n * s_ideal_oc;
@@ -538,8 +545,8 @@
         let longer = candidates.find(c => c.L > L_cc + 0.001);
 
         let suggestionsHTML = "";
-        if (Math.abs(delta) <= 0.001 && T_min_airGap === 0) {
-            suggestionsHTML = `<em>Current length is already mathematically perfect.</em>`;
+        if (Math.abs(delta_worst_case) <= 0.001 && T_min_airGap === 0) {
+            suggestionsHTML = `<em>Current length perfectly accommodates nominal ring + tolerance.</em>`;
         } else {
             if (shorter) {
                 let diffShort = L_cc - shorter.L;
@@ -564,6 +571,7 @@
         }
         document.getElementById('outSuggestions').innerHTML = suggestionsHTML || "No valid suggestions found.";
 
+        // --- RUNNING LAYOUT ---
         let runningHTML = "";
         if (numPosts > 0) {
             const onCenterSpacing = S_OC;
@@ -580,6 +588,7 @@
         }
         document.getElementById('outRunningSpacing').innerHTML = runningHTML;
 
+        // Output results to UI
         document.getElementById('outSections').innerText = N;
         document.getElementById('outPosts').innerText = numPosts;
         document.getElementById('outSectionLength').innerText = S_OC.toFixed(3) + '"';
